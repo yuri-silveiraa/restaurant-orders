@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Cozinha</title>
+    <style>
+        body {
+            display: flex;
+            gap: 20px;
+            font-family: sans-serif;
+            padding: 20px;
+        }
+
+        .coluna {
+            width: 33%;
+        }
+
+        .card {
+            background: #f0f0f0;
+            margin: 10px;
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .hora {
+            font-size: 0.8em;
+            color: #555;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="coluna">
+        <h3>🆕 Recebidos</h3>
+        <div id="recebido"></div>
+    </div>
+    <div class="coluna">
+        <h3>🍳 Preparando</h3>
+        <div id="preparando"></div>
+    </div>
+    <div class="coluna">
+        <h3>✅ Finalizados</h3>
+        <div id="finalizado"></div>
+    </div>
+
+    <script>
+        const socket = new WebSocket("ws://localhost:8000/ws/pedidos");
+
+        socket.onmessage = (e) => {
+            const pedidos = JSON.parse(e.data);
+            ['recebido', 'preparando', 'finalizado'].forEach(id => document.getElementById(id).innerHTML = '');
+            pedidos.forEach(renderCard);
+        };
+
+        function renderCard(pedido) {
+            const card = document.createElement("div");
+            card.className = "card";
+            card.innerHTML = `
+        <strong>${pedido.nome}</strong><br>
+        ${pedido.qtd}x ${pedido.item}<br>
+        <div class="hora">Recebido: ${pedido.horaRecebido}</div>
+        <div class="hora">Preparando: ${pedido.horaPreparando}</div>
+        <div class="hora">Finalizado: ${pedido.horaFinalizado}</div>
+      `;
+            card.onclick = () => atualizarPedido(pedido);
+            if (pedido.estado !== "finalizado") {
+                document.getElementById(pedido.estado).appendChild(card);
+            } else {
+                document.getElementById("finalizado").appendChild(card);
+            }
+        }
+
+        function atualizarPedido(pedido) {
+            if (pedido.estado === "recebido") pedido.estado = "preparando";
+            else if (pedido.estado === "preparando") pedido.estado = "finalizado";
+
+            fetch("/update", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(pedido)
+            });
+        }
+    </script>
+</body>
+
+</html>
